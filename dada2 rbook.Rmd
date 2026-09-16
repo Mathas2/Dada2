@@ -74,3 +74,12 @@ plotErrors(errF, nominalQ=TRUE)
 # permet d'avoir un graphe avec le taux d'erreur estimé pour les changements de bases possibles
 ```
 
+```{r}
+dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
+```
+
+```{r}
+dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
+#on applique l'algorithme d'interférence des core échantillons à la seq de données qu'on a filtré et recoupé plus tot
+```
+
