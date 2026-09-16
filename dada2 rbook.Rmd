@@ -95,3 +95,13 @@ head(mergers[[1]])
 # on fusionne les seq forward et reverse qu'on a débruité au niveau des sequences chevauchantes 
 ```
 
+```{r}
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+```
+
+```{r}
+table(nchar(getSequences(seqtab)))
+#on construit une table d' amplicon sequence variant (ASV). la table est une matrice où les lignes correspondent aux échantillons et les colonnes correspondent aux variants de sequences. la table contient 293 ASV
+```
+
