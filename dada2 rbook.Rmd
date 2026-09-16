@@ -26,12 +26,23 @@ list.files(path)
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
 
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE)) 
-#F=forward correspond au brin sens 
+#F=forward correspond à la lecture de gauche à droite 
 
 fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE)) 
-# R=reverse correspond au brin antisens
+# R=reverse correspond à la lecture de droite à gauche
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
+
+```{r}
+plotQualityProfile(fnFs[1:2]) 
+#visualisation des profils de contrôle qualité des seq forward
+```
+
+```{r}
+plotQualityProfile(fnRs[1:2])
+#profils des seq reverse
+```
+
 
