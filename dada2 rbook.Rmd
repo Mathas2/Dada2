@@ -105,3 +105,14 @@ table(nchar(getSequences(seqtab)))
 #on construit une table d' amplicon sequence variant (ASV). la table est une matrice où les lignes correspondent aux échantillons et les colonnes correspondent aux variants de sequences. la table contient 293 ASV
 ```
 
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+#on enlève les chimères. les seq chimériques sont idéentifiées si elles peuvent être reconstruites en combinant les segments gauches et droits de 2 sequences "parentales", ces seq ne peuvent pas exister dans la nature mais sont créées lors de la formation des ASV
+```
+
+```{r}
+sum(seqtab.nochim)/sum(seqtab)
+#ici on a 4% des seq qui sont des seq chimériques et qui sont enlevées 
+```
+
