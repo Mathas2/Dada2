@@ -88,3 +88,10 @@ dadaFs[[1]]
 #on a débruité (enlevé les valeurs aberantes etc) des seq et on obtient 128 variants de sequence à partir des 1979 sequences unique données.
 ```
 
+```{r}
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# on fusionne les seq forward et reverse qu'on a débruité au niveau des sequences chevauchantes 
+```
+
