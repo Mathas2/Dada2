@@ -83,3 +83,8 @@ dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
 #on applique l'algorithme d'interférence des core échantillons à la seq de données qu'on a filtré et recoupé plus tot
 ```
 
+```{r}
+dadaFs[[1]]
+#on a débruité (enlevé les valeurs aberantes etc) des seq et on obtient 128 variants de sequence à partir des 1979 sequences unique données.
+```
+
