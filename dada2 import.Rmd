@@ -19,3 +19,15 @@ wget "https://zenodo.org/records/4587955/files/silva_nr99_v138.1_train_set.fa.gz
 
 ```{bash}
 wget "https://zenodo.org/records/4587955/files/silva_species_assignment_v138.1.fa.gz?download=1" -O silva_species_assignement_v138.1.fa.gz
+# le -O permet de forcer le nom de sortie du fichier.
+```
+
+```{bash}
+ls -la /home/rstudio/Dada2/Dada2/HMP_MOCK.v35.fasta
+head -c 500 /home/rstudio/Dada2/Dada2/HMP_MOCK.v35.fasta
+```
+
+```{bash}
+find /home/rstudio/Dada2/Dada2/MiSeq_SOP -iname "*HMP_MOCK*" 
+```
+

@@ -160,19 +160,11 @@ length(unqs.mock)
 names(unqs.mock)[1:3]  # regarder à quoi ressemblent les séquences
 ```
 
-```{r}
-length(mock.ref)
-length(unqs.mock)
-```
-
-```{r}
-mock.ref <- getSequences(file.path(path, "MiSeq_SOP", "HMP_MOCK.v35.fasta"))
-```
 
 ```{r}
 mock.ref <- getSequences(file.path(path, "MiSeq_SOP", "HMP_MOCK.v35.fasta"))
 match.ref <- sum(sapply(names(unqs.mock), function(x) any(grepl(x, mock.ref))))
 cat("Of those,", sum(match.ref), "were exact matches to the expected reference sequences.\n")
-# parmi les 20 seq testées, 20 sont des matchs exactes, ce qui est attendu puisqu'on connait deja les seq
+# parmi les 20 seq testées, 20 sont des matchs exactes, ce qui est attendu puisqu'on connait deja les seq 
 ```
 
