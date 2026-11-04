@@ -1,0 +1,262 @@
+---
+title: "R Notebook Mathéo Hascoet"
+output:
+  github_document:
+    df_print: paged
+---
+```{r}
+Sys.setlocale("LC_ALL", "French_France.1252")
+```
+
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("dada2", version = "3.23")
+
+```
+
+
+
+```{r}
+
+library(dada2); packageVersion("dada2")
+```
+
+```{r}
+path <- "/home/rstudio/Dada2/Dada2/MiSeq_SOP" # CHANGE ME to the directory containing the fastq 
+list.files(path)
+```
+
+```{r}
+# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
+
+fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE)) 
+#F=forward correspond à la lecture de gauche à droite 
+
+fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE)) 
+# R=reverse correspond à la lecture de droite à gauche
+
+# Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+```
+
+```{r}
+plotQualityProfile(fnFs[1:2]) 
+#visualisation des profils de contrôle qualité des seq forward
+```
+
+```{r}
+plotQualityProfile(fnRs[1:2])
+#profils des seq reverse
+```
+
+```{r}
+# Place filtered files in filtered/ subdirectory
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+```
+
+```{r}
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
+              maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+              compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE (only needed for filterAndTrim)
+head(out)
+# ici on supprime les valeurs à partir de 240 pour le fnFs et 160 pour fnRs car ces valeurs ont un score de qualité trop faible. On conserve cependant assez données pour que les 2 seq puissent se superposer
+```
+
+```{r}
+errF <- learnErrors(filtFs, multithread=TRUE)
+```
+
+```{r}
+errR <- learnErrors(filtRs, multithread=TRUE)
+```
+
+```{r}
+plotErrors(errF, nominalQ=TRUE)
+# permet d'avoir un graphe avec le taux d'erreur estimé pour les changements de bases possibles
+```
+
+```{r}
+dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
+```
+
+```{r}
+dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
+#on applique l'algorithme d'interférence des core échantillons à la seq de données qu'on a filtré et recoupé plus tot
+```
+
+```{r}
+dadaFs[[1]]
+#on a débruité (enlevé les valeurs aberantes etc) des seq et on obtient 128 variants de sequence à partir des 1979 sequences unique données.
+```
+
+```{r}
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# on fusionne les seq forward et reverse qu'on a débruité au niveau des sequences chevauchantes 
+```
+
+```{r}
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+```
+
+```{r}
+table(nchar(getSequences(seqtab)))
+#on construit une table d' amplicon sequence variant (ASV). la table est une matrice où les lignes correspondent aux échantillons et les colonnes correspondent aux variants de sequences. la table contient 293 ASV
+```
+
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+#on enlève les chimères. les seq chimériques sont idéentifiées si elles peuvent être reconstruites en combinant les segments gauches et droits de 2 sequences "parentales", ces seq ne peuvent pas exister dans la nature mais sont créées lors de la formation des ASV
+```
+
+```{r}
+sum(seqtab.nochim)/sum(seqtab)
+#ici on a 4% des seq qui sont des seq chimériques et qui sont enlevées 
+```
+
+```{r}
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(track) <- sample.names
+head(track)
+# ici on vérifie toutes les seq qui ont passées toutes les étapes du cheminement 
+```
+
+```{r}
+path <- "/home/rstudio/Dada2/Dada2/"
+```
+
+```{r}
+taxa <- assignTaxonomy(seqtab.nochim, paste0(path, "silva_nr99_v138.1_train_set.fa.gz"), multithread=TRUE)
+#on assigne à l'objet "taxa" la taxonomie des sequences des espèces silva sans les séquences chimériques
+```
+
+```{r}
+taxa.print <- taxa # Removing sequence rownames for display only
+rownames(taxa.print) <- NULL
+head(taxa.print)
+# montre la classification des oragnismes que l'on a dans le jeu de données, mais classification incomplète notament au niveau du genre
+```
+
+```{r}
+unqs.mock <- seqtab.nochim["Mock",]
+unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
+cat("DADA2 inferred", length(unqs.mock), "sample sequences present in the Mock community.\n")
+# on utilise des souches références connues pour évaluer la précision. Dada2 déduit 20 espèces présentes dans cette communauté "mock"
+```
+
+```{r}
+mock.ref <- getSequences(file.path(path, "HMP_MOCK.v35.fasta"))
+length(mock.ref)
+head(mock.ref)
+```
+
+```{r}
+length(unqs.mock)
+names(unqs.mock)[1:3]  # regarder à quoi ressemblent les séquences
+```
+
+
+```{r}
+mock.ref <- getSequences(file.path(path, "MiSeq_SOP", "HMP_MOCK.v35.fasta"))
+match.ref <- sum(sapply(names(unqs.mock), function(x) any(grepl(x, mock.ref))))
+cat("Of those,", sum(match.ref), "were exact matches to the expected reference sequences.\n")
+# parmi les 20 seq testées, 20 sont des matchs exactes, ce qui est attendu puisqu'on connait deja les seq 
+```
+
+
+
+Phyloseq:
+```{r}
+#coller ceci dans le terminal : sudo apt update && sudo apt install -y libglpk-dev
+```
+
+
+```{r}
+install.packages("igraph", type = "source") 
+
+```
+
+```{r}
+BiocManager::install("phyloseq", update = FALSE)
+```
+```{r}
+library(phyloseq); packageVersion("phyloseq")
+```
+
+```{r}
+library(Biostrings); packageVersion("Biostrings")
+```
+
+```{r}
+library(ggplot2); packageVersion("ggplot2")
+```
+
+```{r}
+samples.out <- rownames(seqtab.nochim) 
+subject <- sapply(strsplit(samples.out, "D"), `[`, 1)
+gender <- substr(subject,1,1)
+subject <- substr(subject,2,999)
+day <- as.integer(sapply(strsplit(samples.out, "D"), `[`, 2))
+samdf <- data.frame(Subject=subject, Gender=gender, Day=day)
+samdf$When <- "Early"
+samdf$When[samdf$Day>100] <- "Late"
+rownames(samdf) <- samples.out
+# on crée le tableau de métadonnées: on récupère les noms des échantillons grâce à samples.out, on extrait le sujet, le genre et le jour que l'on insère dans samdf. On les trie en fonction du nombre de jour: <100jours = early, >100jours = late. On met ensuite les noms d'chantillons comme noms de lignes avec rownames. 
+```
+
+```{r}
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE),
+               sample_data(samdf),
+               tax_table(taxa))
+ps <- prune_samples(sample_names(ps) != "Mock", ps) # Remove mock sample
+# on assemble le tout dans un seul objet "ps" auquel on retire les valeurs "mock" qui ne font pas partie de l'étude mais qu'on a rajouté pendant Dada2.
+```
+
+```{r}
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+ps
+# on stocke les séquences d'ADN de chaque ASV et on les renommes. On affiche ensuite un aperçu de ps. 
+```
+
+```{r}
+plot_richness(ps, x="Day", measures=c("Shannon", "Simpson"), color="When")
+# on crée un graphique montrant la diversité/richesse au sein de chaque échantillon avec les indices de Shannon et Simpson en fonction du jour.
+```
+
+```{r}
+# Transforme les données en abondance relative. On fait une ordination basée sur les distances Bray-Curtis, qui correspondent à la dissimilarité de composition entre échantillons.
+ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
+ord.nmds.bray <- ordinate(ps.prop, method="NMDS", distance="bray")
+```
+
+```{r}
+plot_ordination(ps.prop, ord.nmds.bray, color="When", title="Bray NMDS")
+# on crée le graphique où chaque point est un échantillon, et les points proches ont une composition microbienne similaire. 
+```
+
+```{r}
+top20 <- names(sort(taxa_sums(ps), decreasing=TRUE))[1:20]
+ps.top20 <- transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
+ps.top20 <- prune_taxa(top20, ps.top20)
+plot_bar(ps.top20, x="Day", fill="Family") + facet_wrap(~When, scales="free_x")
+# On sélectionne les ASV les plus abondants, on calcul leur abondance relative et on crée un diagramme en barre par jour, avec une coloration par famille bactérienne.  
+```
+
+
+
+
+
