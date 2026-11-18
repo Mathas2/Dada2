@@ -256,7 +256,7 @@ plot_bar(ps.top20, x="Day", fill="Family") + facet_wrap(~When, scales="free_x")
 # On sélectionne les ASV les plus abondants, on calcul leur abondance relative et on crée un diagramme en barre par jour, avec une coloration par famille bactérienne.  
 ```
 
-
+aa
 
 
 
